@@ -49,7 +49,7 @@ async function executeFunction(name, func, args) {
         const result = await func(...args);
         outputLogs[outputLogs.length - 1] += `✅ Success`; // Append to the "Calling..." line
         if (result !== undefined) {
-             outputLogs.push(`     Output: ${JSON.stringify(result)}`);
+            outputLogs.push(`     Output: ${JSON.stringify(result)}`);
         }
     } catch (e) {
         outputLogs[outputLogs.length - 1] += `❌ Error`; // Append to the "Calling..." line
@@ -64,15 +64,15 @@ async function analyseAndRun(sourceTsPath, compiledJsPath) {
     outputLogs.push(`\nFuzzing file: ${path.basename(compiledJsPath)}`);
     outputLogs.push(`   (Source: ${path.basename(sourceTsPath)})`);
     outputLogs.push('-'.repeat(50));
-    
+
     const program = ts.createProgram([sourceTsPath], {});
     const sourceFileForAst = program.getSourceFile(sourceTsPath);
-    if (!sourceFileForAst) { 
+    if (!sourceFileForAst) {
         outputLogs.push("[Error] Could not get source file AST.");
-        return; 
+        return;
     }
     const checker = program.getTypeChecker();
-    
+
     // Dynamically import the user's code that we just compiled
     const targetModule = await import(`file://${compiledJsPath}?v=${Date.now()}`);
 
@@ -86,7 +86,7 @@ async function analyseAndRun(sourceTsPath, compiledJsPath) {
         outputLogs.push("   - Registered custom mock generator for type 'Sudoku'.");
     }
 
-    const PlayerClass = targetModule.Player; 
+    const PlayerClass = targetModule.Player;
     if (PlayerClass) {
         registerMockGenerator('Player', () => {
             const mockKey = PrivateKey.random().toPublicKey();
@@ -98,7 +98,7 @@ async function analyseAndRun(sourceTsPath, compiledJsPath) {
 
     // Main discovery and execution loop
     const moduleSymbol = checker.getSymbolAtLocation(sourceFileForAst);
-    if (!moduleSymbol) { 
+    if (!moduleSymbol) {
         outputLogs.push("[Error] Could not find module symbol.");
         return;
     }
@@ -122,9 +122,9 @@ async function analyseAndRun(sourceTsPath, compiledJsPath) {
                     outputLogs.push(`   - Instantiated ${className} successfully.`);
                 } catch (e) {
                     outputLogs.push(`   - ❌ Failed to instantiate ${className}: ${e.message}`);
-                    continue; 
+                    continue;
                 }
-                
+
                 for (const member of declaration.members) {
                     if (ts.isMethodDeclaration(member)) {
                         const hasMethodDecorator = ts.canHaveDecorators(member) && ts.getDecorators(member)?.some(d => d.expression.getText(sourceFileForAst).startsWith('method'));
@@ -148,7 +148,7 @@ async function analyseAndRun(sourceTsPath, compiledJsPath) {
 export const handler = async (event) => {
     // Reset logs for each invocation
     outputLogs = [];
-    
+
     try {
         const body = JSON.parse(event.body);
         const userCode = body.code;
@@ -167,7 +167,7 @@ export const handler = async (event) => {
             esModuleInterop: true,
             // Add other tsconfig options if needed
         });
-        
+
         const emitResult = program.emit();
         if (emitResult.emitSkipped) {
             // Collect diagnostic messages if compilation fails
@@ -198,7 +198,7 @@ export const handler = async (event) => {
             }),
         };
 
-        
+
     } catch (error) {
         console.error(error);
         // Return an error response
