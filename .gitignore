@@ -3,6 +3,7 @@ node_modules
 build
 cache
 dist
+.env
 
 #amplify-do-not-edit-begin
 amplify/\#current-cloud-backend

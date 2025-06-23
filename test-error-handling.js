@@ -9,6 +9,7 @@ const testCases = [
         name: 'Valid Code Input',
         event: {
             body: JSON.stringify({
+                mode: 'code',
                 code: `
 import { SmartContract, method, Field } from 'o1js';
 
@@ -24,6 +25,18 @@ export class TestContract extends SmartContract {
         expectedStatus: 200
     },
     {
+        name: 'Valid GitHub Repo Input',
+        event: {
+            body: JSON.stringify({
+                mode: 'repo',
+                repoUrl: 'https://github.com/o1-labs/o1js',
+                branch: 'main',
+                filePath: 'src/lib/field.ts'
+            })
+        },
+        expectedStatus: 200 // Should work with a real file path
+    },
+    {
         name: 'Invalid JSON',
         event: {
             body: 'invalid json'
@@ -33,7 +46,9 @@ export class TestContract extends SmartContract {
     {
         name: 'Missing Code',
         event: {
-            body: JSON.stringify({})
+            body: JSON.stringify({
+                mode: 'code'
+            })
         },
         expectedStatus: 400
     },
@@ -41,6 +56,7 @@ export class TestContract extends SmartContract {
         name: 'Empty Code',
         event: {
             body: JSON.stringify({
+                mode: 'code',
                 code: ''
             })
         },
@@ -50,7 +66,27 @@ export class TestContract extends SmartContract {
         name: 'Code Too Short',
         event: {
             body: JSON.stringify({
+                mode: 'code',
                 code: 'test'
+            })
+        },
+        expectedStatus: 400
+    },
+    {
+        name: 'Invalid GitHub URL',
+        event: {
+            body: JSON.stringify({
+                mode: 'repo',
+                repoUrl: 'invalid-url'
+            })
+        },
+        expectedStatus: 400
+    },
+    {
+        name: 'Missing GitHub URL',
+        event: {
+            body: JSON.stringify({
+                mode: 'repo'
             })
         },
         expectedStatus: 400
@@ -59,13 +95,14 @@ export class TestContract extends SmartContract {
         name: 'Compilation Error',
         event: {
             body: JSON.stringify({
+                mode: 'code',
                 code: `
 import { SmartContract, method, Field } from 'o1js';
 
 export class TestContract extends SmartContract {
     @method
     add(a: Field, b: Field): Field {
-        return a.add(b; // Missing closing parenthesis
+        return a.add(b; // Missing closing parenthesis - this should cause a compilation error
     }
 }
 `
@@ -94,9 +131,9 @@ async function runTests() {
             console.log(`Success: ${response.success}`);
 
             if (response.error) {
-                console.log(`Error Type: ${response.error.type}`);
-                console.log(`Error Code: ${response.error.code}`);
-                console.log(`Error Message: ${response.error.message}`);
+                console.log(`Error Type: ${response.error.type || 'Unknown'}`);
+                console.log(`Error Code: ${response.error.code || 'Unknown'}`);
+                console.log(`Error Message: ${response.error.message || 'Unknown error'}`);
             }
 
             if (result.statusCode === testCase.expectedStatus) {

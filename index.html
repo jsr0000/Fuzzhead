@@ -35,6 +35,22 @@
             text-align: center;
         }
 
+        .input-section input[type="radio"] {
+            margin: 0 10px;
+        }
+
+        .input-section label {
+            margin-right: 20px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        #codeSection,
+        #repoSection {
+            width: 100%;
+            margin: 20px 0;
+        }
+
         textarea {
             width: 100%;
             height: 400px;
@@ -51,6 +67,42 @@
             outline: none;
             border-color: #007bff;
             box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        .repo-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .repo-inputs input {
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .repo-inputs input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .input-group label {
+            font-weight: 500;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .input-group input {
+            margin: 0;
         }
 
         button {
@@ -184,7 +236,12 @@
         <h1>Fuzzhead Web Interface</h1>
 
         <div class="input-section">
-            <h3>Paste Your TypeScript Code:</h3>
+            <h3>Choose Input Method:</h3>
+            <input type="radio" id="codeInput" name="inputType" value="code" checked>
+            <label for="codeInput">Paste Code</label>
+
+            <input type="radio" id="repoInput" name="inputType" value="repo">
+            <label for="repoInput">GitHub Repository</label>
         </div>
 
         <div id="codeSection">
@@ -201,6 +258,23 @@ export class TestContract extends SmartContract {
 }"></textarea>
         </div>
 
+        <div id="repoSection" style="display: none;">
+            <div class="repo-inputs">
+                <div class="input-group">
+                    <label for="repoUrl">GitHub Repository URL *</label>
+                    <input type="text" id="repoUrl" placeholder="https://github.com/username/repo" required>
+                </div>
+                <div class="input-group">
+                    <label for="branch">Branch (optional)</label>
+                    <input type="text" id="branch" placeholder="main" value="main">
+                </div>
+                <div class="input-group">
+                    <label for="filePath">Specific File Path (optional)</label>
+                    <input type="text" id="filePath" placeholder="src/contracts/MyContract.ts">
+                </div>
+            </div>
+        </div>
+
         <button id="runButton">
             <span class="loading-spinner" style="display: none;"></span>
             Run Fuzzer
@@ -211,13 +285,35 @@ export class TestContract extends SmartContract {
     </div>
 
     <script>
+        const codeInput = document.getElementById('codeInput');
+        const repoInput = document.getElementById('repoInput');
+        const codeSection = document.getElementById('codeSection');
+        const repoSection = document.getElementById('repoSection');
         const codeTextarea = document.getElementById('codeTextarea');
+        const repoUrl = document.getElementById('repoUrl');
+        const branch = document.getElementById('branch');
+        const filePath = document.getElementById('filePath');
         const runButton = document.getElementById('runButton');
         const outputLogs = document.getElementById('outputLogs');
         const status = document.getElementById('status');
         const spinner = document.querySelector('.loading-spinner');
 
         const API_ENDPOINT = 'https://mriak6j5zf.execute-api.eu-west-2.amazonaws.com/dev/fuzz';
+
+        // Handle input method switching
+        codeInput.addEventListener('change', () => {
+            if (codeInput.checked) {
+                codeSection.style.display = 'block';
+                repoSection.style.display = 'none';
+            }
+        });
+
+        repoInput.addEventListener('change', () => {
+            if (repoInput.checked) {
+                codeSection.style.display = 'none';
+                repoSection.style.display = 'block';
+            }
+        });
 
         function showStatus(message, type = 'loading') {
             status.textContent = message;
@@ -239,15 +335,20 @@ export class TestContract extends SmartContract {
             runButton.disabled = false;
         }
 
+        function validateRepoUrl(url) {
+            const githubRegex = /^https:\/\/github\.com\/[^\/]+\/[^\/]+$/;
+            return githubRegex.test(url);
+        }
+
         function formatOutput(response) {
             let output = '';
 
             // Add error details if present
             if (response.error) {
-                output += `❌ ERROR: ${response.error.message}\n`;
-                output += `Type: ${response.error.type}\n`;
-                output += `Code: ${response.error.code}\n`;
-                output += `Timestamp: ${response.error.timestamp}\n`;
+                output += `❌ ERROR: ${response.error.message || 'Unknown error'}\n`;
+                output += `Type: ${response.error.type || 'Unknown'}\n`;
+                output += `Code: ${response.error.code || 'Unknown'}\n`;
+                output += `Timestamp: ${response.error.timestamp || 'Unknown'}\n`;
 
                 if (response.error.details && Object.keys(response.error.details).length > 0) {
                     output += `Details: ${JSON.stringify(response.error.details, null, 2)}\n`;
@@ -277,16 +378,39 @@ export class TestContract extends SmartContract {
             showLoading();
 
             try {
-                if (!codeTextarea.value.trim()) {
-                    showStatus('Please enter some code to fuzz', 'error');
-                    return;
+                let requestBody = {};
+
+                if (codeInput.checked) {
+                    // Code input mode
+                    if (!codeTextarea.value.trim()) {
+                        showStatus('Please enter some code to fuzz', 'error');
+                        return;
+                    }
+                    requestBody = {
+                        mode: 'code',
+                        code: codeTextarea.value
+                    };
+                    showStatus('Running fuzzer on pasted code...', 'loading');
+                } else {
+                    // Repository mode
+                    if (!repoUrl.value.trim()) {
+                        showStatus('Please enter a GitHub repository URL', 'error');
+                        return;
+                    }
+
+                    if (!validateRepoUrl(repoUrl.value)) {
+                        showStatus('Please enter a valid GitHub repository URL (e.g., https://github.com/username/repo)', 'error');
+                        return;
+                    }
+
+                    requestBody = {
+                        mode: 'repo',
+                        repoUrl: repoUrl.value,
+                        branch: branch.value || 'main',
+                        filePath: filePath.value || null
+                    };
+                    showStatus('Reading repository and running fuzzer...', 'loading');
                 }
-
-                const requestBody = {
-                    code: codeTextarea.value
-                };
-
-                showStatus('Running fuzzer on pasted code...', 'loading');
 
                 const response = await fetch(API_ENDPOINT, {
                     method: 'POST',
@@ -302,7 +426,7 @@ export class TestContract extends SmartContract {
                     showStatus('Fuzzing completed successfully!', 'success');
                     outputLogs.textContent = formatOutput(result);
                 } else {
-                    showStatus(`Error: ${result.error?.message || result.message}`, 'error');
+                    showStatus(`Error: ${result.error?.message || result.message || 'Unknown error'}`, 'error');
                     outputLogs.textContent = formatOutput(result);
                 }
 
