@@ -1,58 +1,319 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Fuzzhead Web</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
-        textarea { width: 80%; height: 400px; font-family: monospace; }
-        button { margin: 10px; padding: 10px 20px; }
-        pre { background-color: #f4f4f4; border: 1px solid #ccc; padding: 10px; width: 80%; min-height: 100px; white-space: pre-wrap; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .input-section {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        textarea {
+            width: 100%;
+            height: 400px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        button {
+            margin: 20px 10px;
+            padding: 12px 30px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 6px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .status.loading {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        pre {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 20px;
+            width: 100%;
+            min-height: 200px;
+            white-space: pre-wrap;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        .error-details {
+            background-color: #fff5f5;
+            border: 1px solid #fed7d7;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .error-details h4 {
+            color: #c53030;
+            margin: 0 0 10px 0;
+        }
+
+        .error-details pre {
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            margin: 10px 0;
+            padding: 10px;
+        }
+
+        .summary {
+            background-color: #e8f5e8;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .summary h4 {
+            color: #155724;
+            margin: 0 0 10px 0;
+        }
+
+        .summary ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
+
 <body>
-    <h1>Fuzzhead Web Interface</h1>
-    <textarea id="codeInput" placeholder="Paste your TypeScript code here..."></textarea>
-    <button id="runButton">Run Fuzzer</button>
-    <pre id="outputLogs">Logs will appear here...</pre>
+    <div class="container">
+        <h1>Fuzzhead Web Interface</h1>
+
+        <div class="input-section">
+            <h3>Paste Your TypeScript Code:</h3>
+        </div>
+
+        <div id="codeSection">
+            <textarea id="codeTextarea" placeholder="Paste your TypeScript code here...
+
+Example:
+import { SmartContract, method, Field } from 'o1js';
+
+export class TestContract extends SmartContract {
+    @method
+    add(a: Field, b: Field): Field {
+        return a.add(b);
+    }
+}"></textarea>
+        </div>
+
+        <button id="runButton">
+            <span class="loading-spinner" style="display: none;"></span>
+            Run Fuzzer
+        </button>
+
+        <div id="status" class="status"></div>
+        <pre id="outputLogs">Logs will appear here...</pre>
+    </div>
 
     <script>
-        const codeInput = document.getElementById('codeInput');
+        const codeTextarea = document.getElementById('codeTextarea');
         const runButton = document.getElementById('runButton');
         const outputLogs = document.getElementById('outputLogs');
+        const status = document.getElementById('status');
+        const spinner = document.querySelector('.loading-spinner');
 
-        
         const API_ENDPOINT = 'https://mriak6j5zf.execute-api.eu-west-2.amazonaws.com/dev/fuzz';
 
-        runButton.addEventListener('click', async () => {
-            outputLogs.textContent = 'Running...';
+        function showStatus(message, type = 'loading') {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        function hideStatus() {
+            status.style.display = 'none';
+        }
+
+        function showLoading() {
+            spinner.style.display = 'inline-block';
             runButton.disabled = true;
+        }
+
+        function hideLoading() {
+            spinner.style.display = 'none';
+            runButton.disabled = false;
+        }
+
+        function formatOutput(response) {
+            let output = '';
+
+            // Add error details if present
+            if (response.error) {
+                output += `❌ ERROR: ${response.error.message}\n`;
+                output += `Type: ${response.error.type}\n`;
+                output += `Code: ${response.error.code}\n`;
+                output += `Timestamp: ${response.error.timestamp}\n`;
+
+                if (response.error.details && Object.keys(response.error.details).length > 0) {
+                    output += `Details: ${JSON.stringify(response.error.details, null, 2)}\n`;
+                }
+                output += '\n';
+            }
+
+            // Add summary if present
+            if (response.summary) {
+                output += `📊 SUMMARY:\n`;
+                output += `Total Logs: ${response.summary.totalLogs}\n`;
+                output += `Errors: ${response.summary.errors}\n`;
+                output += `Warnings: ${response.summary.warnings}\n\n`;
+            }
+
+            // Add main output
+            if (response.output) {
+                output += response.output;
+            }
+
+            return output;
+        }
+
+        runButton.addEventListener('click', async () => {
+            outputLogs.textContent = '';
+            hideStatus();
+            showLoading();
 
             try {
+                if (!codeTextarea.value.trim()) {
+                    showStatus('Please enter some code to fuzz', 'error');
+                    return;
+                }
+
+                const requestBody = {
+                    code: codeTextarea.value
+                };
+
+                showStatus('Running fuzzer on pasted code...', 'loading');
+
                 const response = await fetch(API_ENDPOINT, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        code: codeInput.value,
-                    }),
+                    body: JSON.stringify(requestBody),
                 });
 
                 const result = await response.json();
 
-                if (response.ok) {
-                    outputLogs.textContent = result.output;
+                if (response.ok && result.success) {
+                    showStatus('Fuzzing completed successfully!', 'success');
+                    outputLogs.textContent = formatOutput(result);
                 } else {
-                    outputLogs.textContent = `ERROR:\n${result.message}\n\n---LOGS---\n${result.output}`;
+                    showStatus(`Error: ${result.error?.message || result.message}`, 'error');
+                    outputLogs.textContent = formatOutput(result);
                 }
 
             } catch (error) {
-                outputLogs.textContent = `Failed to connect to API: ${error.message}`;
+                showStatus(`Failed to connect to API: ${error.message}`, 'error');
+                outputLogs.textContent = `❌ CONNECTION ERROR:\n${error.message}\n\nPlease check your internet connection and try again.`;
             } finally {
-                runButton.disabled = false;
+                hideLoading();
             }
         });
     </script>
 </body>
+
 </html>
